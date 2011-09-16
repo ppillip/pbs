@@ -8,7 +8,6 @@ var server = net.createServer(function (socket) {
 
     socket.on("connect",function(){
         conCnt++;
-        socket.write("hello"+LF);
         sys.print(LF+conCnt);
     });
 
