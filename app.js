@@ -1,38 +1,31 @@
+var net = require('net');
+var sys = require('sys');
 
-/**
- * Module dependencies.
- */
+var conCnt = 0;
+var LF = "\r\n";
 
-var express = require('express');
+var server = net.createServer(function (socket) {
 
-var app = module.exports = express.createServer();
+    socket.on("connect",function(){
+        conCnt++;
+        socket.write("hello"+LF);
+        sys.print(LF+conCnt);
+    });
 
-// Configuration
+    socket.on("data",function(data){
 
-app.configure(function(){
-  app.set('views', __dirname + '/views');
-  app.set('view engine', 'jade');
-  app.use(express.bodyParser());
-  app.use(express.methodOverride());
-  app.use(app.router);
-  app.use(express.static(__dirname + '/public'));
+       if(data=="nice"+LF){
+         socket.write("정답입니다"+LF);
+       }
+       else if(data=="exit"+LF){
+         socket.write("바이바이 꺼져라"+LF);
+         socket.end();
+       }
+       else {
+         socket.write(data);
+       }
+    })
+
 });
 
-app.configure('development', function(){
-  app.use(express.errorHandler({ dumpExceptions: true, showStack: true })); 
-});
-
-app.configure('production', function(){
-  app.use(express.errorHandler()); 
-});
-
-// Routes
-
-app.get('/', function(req, res){
-  res.render('index', {
-    title: 'Express'
-  });
-});
-
-app.listen(3000);
-console.log("Express server listening on port %d in %s mode", app.address().port, app.settings.env);
+server.listen(1337, "127.0.0.1");
