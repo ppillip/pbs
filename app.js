@@ -16,7 +16,13 @@
         socket.write( buf1,function(){
             console.log("전송완료");
         });
-        
+
+        socket.setTimeout(300,function(){
+            console.log("응답없으므로 종료");
+            socket.end();
+            socket.destroy();
+        })
+
         socket.on("data",function(msg){
 
 
