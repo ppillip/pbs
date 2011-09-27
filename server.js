@@ -1,11 +1,7 @@
 var sendFlag="ok";
 
-while(true){
-    if(sendFlag=="ok"){
-        sendFlag="no";
-        fork(function(){sendFlag="ok"});
-    }
-}
+fork(function(){sendFlag="ok"});
+console.log('2');
 
 process.on("uncaughtException",function(err){console.log(err)});
 
@@ -15,22 +11,25 @@ function fork(callback){
     //var socket = net.createConnection(4001,"192.168.0.223");
     var socket = net.createConnection(2000);
 
+    console.log('fork:진입2');
+
     socket.setTimeout(2000,function(){
         callback();
         socket.end();
         socket.destroy();
-    });    
+    });
 
     socket.setNoDelay(true);
 
 
     socket.on("error",function(err){
         callback();
-        console.log(err);
+        console.log("에러 : "+err.message);
     });
-
+    console.log('fork:진입3');
     socket.on("connect",function(data){
         console.log("connected");
+
 
         /*1234 abcd*/
         var data1 = [0x10,0x02,0x03,0x00,0x1C,0x54,0x00,0x01,0x0F,0x57
