@@ -1,6 +1,5 @@
-
     var net = require('net');
-    var socket = net.createConnection(4001,"192.168.0.223");
+    var socket = net.createConnection(2000,"localhost");
     socket.setNoDelay(true);
     socket.on("connect",function(data){
         console.log("connected");
