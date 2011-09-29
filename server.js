@@ -1,62 +1,85 @@
-var sendFlag="ok";
+var msgQueue = [function(){console.log("Hellow World~!!")}];
 
-fork(function(){sendFlag="ok"});
-console.log('2');
+var t = setInterval(function(){
+    if(msgQueue.length!=0){
+        try{
+            (msgQueue.pop())();
+        }catch(err){
+            console.log(err.message);
+        }
+    }else{
+        fncCommon();
+    }
 
-process.on("uncaughtException",function(err){console.log(err)});
+},200);
 
-function fork(callback){
-    console.log('fork:진입');
-    var net = require('net');
-    //var socket = net.createConnection(4001,"192.168.0.223");
-    var socket = net.createConnection(2000);
+var i = 0;
+var x = setInterval(function(){
+    i++;
+    msgQueue.unshift(function(){console.log("\nhi man~!!!!["+i+"]")});
+},1000);
 
-    console.log('fork:진입2');
+function fncCommon(){
+   var net = require('net');
+   //var socket = net.createConnection(4001,"192.168.0.223");
+   var socket = net.createConnection(2000);
 
-    socket.setTimeout(2000,function(){
-        callback();
-        socket.end();
-        socket.destroy();
-    });
+   socket.setTimeout(2000,function(){
+       socket.end();
+       socket.destroy();
+   });
 
-    socket.setNoDelay(true);
+   socket.on("error",function(err){
+       console.log("에러 : "+err.message);
+   });
 
-
-    socket.on("error",function(err){
-        callback();
-        console.log("에러 : "+err.message);
-    });
-    console.log('fork:진입3');
-    socket.on("connect",function(data){
-        console.log("connected");
+   socket.on("connect",function(data){
+       console.log("connected");
 
 
-        /*1234 abcd*/
-        var data1 = [0x10,0x02,0x03,0x00,0x1C,0x54,0x00,0x01,0x0F,0x57
-                    ,0x00,0x00,0x80,0x80,0x14,0x3C,0x01,0x01,0x01,0x01
-                    ,0x01,0x01,0x01,0x01,0x01,0xC2,0xF7,0xBB,0xA9,0xBC
-                    ,0xBC,0xBF,0xE4,0x10,0x03];
+       /*commenMode 전문 날리기*/
+       var data1 = [0x10,0x02,0x03,0x00,0x1C,0x54,0x00,0x01,0x0F,0x57];
 
-        /*차빼세요*/
-        var data2 = [0x10,0x02,0x03,0x00,0x26,0x54,0x00,0x01,0x0F,0x57
-                    ,0x00,0x00,0x01,0x01,0xC8,0x3C,0x01,0x01,0x01,0x01
-                    ,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01
-                    ,0x31,0x32,0x33,0x34,0x32,0x31,0x33,0x31,0x32,0x33
-                    ,0x31,0x32,0x33,0x10,0x03];
+       var buf1 = new Buffer(data1);
 
-        var buf1 = new Buffer(data1);
+       socket.write( buf1,function(){
+           console.log("전송완료");
+       });
 
-        socket.write( buf1,function(){
-            console.log("전송완료");
-        });
+       socket.on("data",function(msg){
+           console.log("==========================");
+           console.log(msg);
+           console.log("==========================");
+               socket.end();
+               socket.destroy();
 
-        socket.on("data",function(msg){
-            callback();
-            console.log("==========================");
-            console.log(msg);
-            console.log("==========================");
-            socket.end();
-            socket.destroy();
-        });
-    });
+           //전광판 변경
+           fncSignPanel(msg,function(){});
+
+           //전체 상태 업데이트 DB or Memory
+           fncUpdateStatus(msg,function(){});
+
+           //모니터링 쪽으로 전송
+           fncSendToPMS(msg,function(){});
+
+
+       });
+   });
+
 }
+
+var fncSignPanel = function(msg,callback){
+    //TODO : 전광판제어
+    callback();
+}
+
+var fncUpdateStatus = function(msg,callback){
+    //TODO : 상태 업데이트
+    callback();
+}
+
+var fncSendToPMS = function(msg,callback){
+    //TODO : PMS 쪽으로 데이터 전송
+    callback();
+}
+
