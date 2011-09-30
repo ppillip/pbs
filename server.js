@@ -3,13 +3,9 @@ var netMaster = require('net');
 var netForServer = require('net');
 var slaveTimeout = 100; //슬레이브 기다려주는 시간 더 걸리면 짤없음
 var delay = 100; //나머지 처리 시간을 감안해서 준다
-
-//전체 lnc를 한번 스켄할때 들어 가는 시간을 계산한다
-var lncScanTimeout = (getLNCList().length * (slaveTimeout+delay)) + 2500;
-
+var lncScanTimeout = (getLNCList().length * (slaveTimeout+delay)) + 2500;//전체 lnc를 한번 스켄할때 들어 가는 시간을 계산한다
 
 var x = setInterval(function(){
-
     if(msgQueue.length){
         try{
             (msgQueue.pop())();
@@ -19,14 +15,20 @@ var x = setInterval(function(){
     }else{
         fncCommon(getLNCList());
     }
-
-
 },lncScanTimeout);
 
+//이것은 텔넷 테스트용
+var server = netForServer.createServer(function (socket) {
+    socket.on("data",function(data){
+       console.log("---------------------"+data+"-------------------------");
+       msgQueue.unshift(function(){console.log("["+data+"]")});
+    })
+});
+server.listen(2003, "127.0.0.1");
 
 //사용법 http://localhost:1337/?cmd=1234&data=hiall
-var http = require('http');
-http.createServer(function (req, res) {
+var httpFromPMS = require('http');
+httpFromPMS.createServer(function (req, res) {
   var obj = require('url').parse(req.url, true);
 
   fncCmdFromPMS(obj.query,function(data){
@@ -73,10 +75,9 @@ function fncCommon(LNC){
                 clearInterval(interval);
             }
         }
-    ,slaveTimeout+delay); //slave 는 항상 200밀리쎅 안에 답변이 올것이다
+    ,slaveTimeout+delay);
 
 }
-
 
 function getLNCList(){
     var lncList = [];
@@ -88,8 +89,7 @@ function getLNCList(){
 }
 
 function fncRequestToSlave (lncId,callback){
-   //var socket = net.createConnection(4001,"192.168.0.223");
-   var socket = netMaster.createConnection(2000);
+   var socket = netMaster.createConnection(2000); //var socket = net.createConnection(4001,"192.168.0.223");
 
    socket.setTimeout(slaveTimeout,function(){
        callback(false,"Request timeout from Slave.");
@@ -141,4 +141,3 @@ function fncSendToPMS(msg,callback){
     //TODO : PMS 쪽으로 데이터 전송
     callback();
 }
-
