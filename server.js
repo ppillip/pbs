@@ -13,11 +13,16 @@ var t = setInterval(function(){
 
 },200);
 
+/*
 var i = 0;
 var x = setInterval(function(){
     i++;
     msgQueue.unshift(function(){console.log("\nhi man~!!!!["+i+"]")});
 },1000);
+*/
+
+
+
 
 function fncCommon(){
    var net = require('net');
