@@ -1,6 +1,12 @@
 var msgQueue = [function(){console.log("Hellow World~!!")}];
 var netMaster = require('net');
 var netForServer = require('net');
+
+/*DB설정*/
+var Mongolian = require("mongolian");
+var dbServer = new Mongolian; //TODO config 로 설정
+var db = dbServer.db("pcc");
+
 var slaveTimeout = 100; //슬레이브 기다려주는 시간 더 걸리면 짤없음
 var delay = 100; //나머지 처리 시간을 감안해서 준다
 var lncScanTimeout = (getLNCList().length * (slaveTimeout+delay)) + 2500;//전체 lnc를 한번 스켄할때 들어 가는 시간을 계산한다
@@ -54,7 +60,7 @@ function fncCommon(LNC){
             var lncid;
             if (lncid = LNC.pop()) {
 
-                console.log(lncid);
+                console.log("처리 lncID : "+lncid);
 
                 fncRequestToSlave(lncid, function(status, data) {
 
@@ -80,14 +86,23 @@ function fncCommon(LNC){
 }
 
 function getLNCList(){
+
+    var lnc = db.collection("lnc");
+
     var lncList = [];
 
-    //TODO lnc목록을 디비에서 가져 온다
-    lncList = [1,2,3,4,5];
+    lnc.find({}).sort({ lncID : 1 }).toArray(function(err,array){
+        array.forEach(function(dt){
+            lncList.unshift(dt.lncID);
+        });
+    })
 
     return lncList;
 }
 
+/*
+* 장비에게 현재 상태를 물어 보는 가장 기본적인 모드
+* */
 function fncRequestToSlave (lncId,callback){
    var socket = netMaster.createConnection(2000); //var socket = net.createConnection(4001,"192.168.0.223");
 
@@ -111,13 +126,13 @@ function fncRequestToSlave (lncId,callback){
        var buf1 = new Buffer(data);
 
        socket.write( buf1,function(){
-           console.log("---------------------- Write ----------------------");
+           console.log("---------------------- 1. 보내고 ----------------------");
            console.log(buf1);
        });
 
        socket.on("data",function(data){
            console.log(data);
-           console.log("---------------------- Read ----------------------");
+           console.log("---------------------- 2. 받고 ----------------------");
            socket.end();
            socket.destroy();
            callback(true,data);
@@ -133,11 +148,15 @@ function fncSignPanel(msg,callback){
 }
 
  function fncUpdateStatus(msg,callback){
-    //TODO : 상태 업데이트
+    /*TODO : 상태 업데이트
+
+            .
+      */
     callback();
 }
 
 function fncSendToPMS(msg,callback){
     //TODO : PMS 쪽으로 데이터 전송
+
     callback();
 }
