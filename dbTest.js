@@ -7,6 +7,6 @@ var lnc = db.collection("lnc");
 
 lnc.insert({"name":"x"},function(err,post){
     console.log("##############"+err.message()+"#############");
-});
+});  
 
 
