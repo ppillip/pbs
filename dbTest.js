@@ -1,7 +1,10 @@
 var Mongolian = require("mongolian");
-var server = new Mongolian;
+var server = new Mongolian("dbh56.mongolab.com:27567");
 
 var db = server.db("pcc");
+
+db.auth("ppillip", "dnflemf");
+
 var lnc = db.collection("lnc");
 
 lnc.find({}).sort({ lncID : 1 }).toArray(function(err,array){
@@ -9,3 +12,6 @@ lnc.find({}).sort({ lncID : 1 }).toArray(function(err,array){
         console.log(dt.lncID);
     });
 })
+
+
+
