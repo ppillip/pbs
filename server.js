@@ -6,88 +6,70 @@ var netForServer = require('net');
 var Mongolian = require("mongolian");
 var dbServer = new Mongolian; //TODO config 로 설정
 var db = dbServer.db("pcc");
+var lnc = db.collection("lnc");
 
-var slaveTimeout = 100; //슬레이브 기다려주는 시간 더 걸리면 짤없음
-var delay = 100; //나머지 처리 시간을 감안해서 준다
-var lncScanTimeout = (getLNCList().length * (slaveTimeout+delay)) + 2500;//전체 lnc를 한번 스켄할때 들어 가는 시간을 계산한다
+var slaveTimeout = 300; //슬레이브 기다려주는 시간 더 걸리면 짤없음
+var delay = 100;        //나머지 처리 시간을 감안해서 준다 (일종의 보정치)
 
-var x = setInterval(function(){
-    if(msgQueue.length){
-        try{
-            (msgQueue.pop())();
-        }catch(err){
-            console.log(err.message);
-        }
-    }else{
-        fncCommon(getLNCList());
-    }
-},lncScanTimeout);
+var Queue = [];
 
-//이것은 텔넷 테스트용
-var server = netForServer.createServer(function (socket) {
-    socket.on("data",function(data){
-       console.log("---------------------"+data+"-------------------------");
-       msgQueue.unshift(function(){console.log("["+data+"]")});
-    })
+//발사.
+console.log("1. Fire!");
+
+setDefaultQueue(function(){
+    processQueue();
 });
-server.listen(2003, "127.0.0.1");
-
-//사용법 http://localhost:1337/?cmd=1234&data=hiall
-var httpFromPMS = require('http');
-httpFromPMS.createServer(function (req, res) {
-  var obj = require('url').parse(req.url, true);
-
-  fncCmdFromPMS(obj.query,function(data){
-      res.writeHead(200, {'Content-Type': 'text/plain'});
-      res.end(data);
-  });
-}).listen(1337, "127.0.0.1");
-console.log('Server running at http://127.0.0.1:1337/');
 
 
-function fncCmdFromPMS(param,callback){
-    //TODO 커맨드 처리해서 메세지 큐에 뻥션 넣자;
-    console.log("---------------------"+param.cmd+":"+param.data+"-------------------------");
+function setDefaultQueue(callback){
+    console.log("3. setDefaultQueue()");
+    getLNCList(function(LNC){
 
-    msgQueue.unshift(function(){console.log("["+param.cmd+":"+param.data+"]")});
+        for(var i=0;i<LNC.length;i++){
 
-    callback("COMMAND STRING:["+param.cmd +"]<br>DATA:["+ param.data+"] excuted successfuly");
+            Queue.unshift(
+                {
+                    'proc' : function(){
+                        console.log("머가하고싶은데. " + LNC.pop());
+                    }
+                    ,'timeoutInterval' : 1000
+                }
+            );
+
+        }
+        callback();
+    });
+}
+
+
+var x = null;
+
+//무한루프.
+function processQueue(){
+
+    console.log("2. processQueue");
+
+    //큐에 있으면 일단 지운다.다
+    var _obj=null;
+    _obj = Queue.pop();
+    if(_obj){
+        console.log("큐사이즈." + Queue.length);
+        _obj.proc();
+       x = setTimeout(function(){processQueue();},_obj.timeoutInterval + 1);
+       //console.log(typeof(_obj.timeoutInterval));
+    }
+    else
+    {
+        console.log("큐가비었네요.");
+        setDefaultQueue(function(){
+           x = setTimeout(function(){processQueue();},1000);
+        });
+    }
 
 };
 
-function fncCommon(LNC){
-    var interval = setInterval(function() {
-            var lncid;
-            if (lncid = LNC.pop()) {
-
-                console.log("처리 lncID : "+lncid);
-
-                fncRequestToSlave(lncid, function(status, data) {
-
-                    if (status) {
-                        //전광판 변경
-                        fncSignPanel(data, function() {});
-                        //전체 상태 업데이트 DB or Memory
-                        fncUpdateStatus(data, function() {});
-                        //모니터링 쪽으로 전송
-                        fncSendToPMS(data, function() {});
-                    } else {
-                        console.log(data);
-                    }
-
-                });
-
-            } else {
-                clearInterval(interval);
-            }
-        }
-    ,slaveTimeout+delay);
-
-}
-
-function getLNCList(){
-
-    var lnc = db.collection("lnc");
+function getLNCList(callback){
+    console.log("getLNCList()");
 
     var lncList = [];
 
@@ -95,68 +77,8 @@ function getLNCList(){
         array.forEach(function(dt){
             lncList.unshift(dt.lncID);
         });
+        console.log(lncList.length + "개 준다");
+        callback(lncList);
     })
 
-    return lncList;
-}
-
-/*
-* 장비에게 현재 상태를 물어 보는 가장 기본적인 모드
-* */
-function fncRequestToSlave (lncId,callback){
-   var socket = netMaster.createConnection(2000); //var socket = net.createConnection(4001,"192.168.0.223");
-
-   socket.setTimeout(slaveTimeout,function(){
-       callback(false,"Request timeout from Slave.");
-       socket.end();
-       socket.destroy();
-   });
-
-   socket.on("error",function(err){
-       socket.end();
-       socket.destroy();
-       callback(false,err.message);
-   });
-
-   socket.on("connect",function(data){
-       /*commenMode 전문 날리기*/
-       //TODO 전문 정리하기
-       var data = [0x10,0x02,lncId,0x00,0x1C,0x54,0x00,0x01,0x0F,0x57];
-
-       var buf1 = new Buffer(data);
-
-       socket.write( buf1,function(){
-           console.log("---------------------- 1. 보내고 ----------------------");
-           console.log(buf1);
-       });
-
-       socket.on("data",function(data){
-           console.log(data);
-           console.log("---------------------- 2. 받고 ----------------------");
-           socket.end();
-           socket.destroy();
-           callback(true,data);
-
-
-       });
-   });
-}
-
-function fncSignPanel(msg,callback){
-    //TODO : 전광판제어
-    callback();
-}
-
- function fncUpdateStatus(msg,callback){
-    /*TODO : 상태 업데이트
-
-            .
-      */
-    callback();
-}
-
-function fncSendToPMS(msg,callback){
-    //TODO : PMS 쪽으로 데이터 전송
-
-    callback();
-}
+};
